@@ -40,16 +40,61 @@
       (is (= :data
              (deref res 100 :timeout)))))
 
-  ;; Note! Propogation won't work if you signal then listen for propagation.
-  ;; Propagation handling must be set up before sending the signal.
-  #_(testing "Propagate after processing"
+  (testing "Propagate after processing"
     (let [tele (init!)
           res (promise)]
-      (tune-in tele :test #(deliver res %))
-
-      (signal tele :test :data
+      (tune-in tele :test inc)
+      (tune-in tele :prop #(deliver res %))
+      (signal tele :test 0
               :propagate :prop)
-      (is (= :data
+      (is (= 1
              (deref res 100 :timeout)))))
 
-  #_(testing "Handle errors"))
+  (testing "Handle errors"
+    (let [error (promise)
+          tele (init! :err-fn (fn [_] (deliver error :error)))]
+      (tune-in tele :test (fn [_] (throw (ex-info "Error!" {}))))
+      (signal tele :test :data)
+      (is (= :error (deref error 100 :timeout))))))
+
+
+(deftest tune-nonce-test
+
+  (testing "Send and process signal"
+    (let [tele (init!)
+          res (tune-nonce tele :test inc)]
+      (signal tele :test 0)
+      (is (= 1
+             (deref res 100 :timeout)))))
+
+  (testing "Propogate after processing"
+    (let [tele (init!)
+          _ (tune-nonce tele :test inc)
+          res (tune-nonce tele :prop inc)]
+      (signal tele :test 0
+              :propagate :prop)
+      (is (= 2
+             (deref res 100 :timeout)))))
+
+  (testing "Handle errors"
+    (let [error (promise)
+          tele (init! :err-fn (fn [_] (deliver error :error)))]
+      (tune-nonce tele :test (fn [_] (throw (ex-info "Error!" {}))))
+      (signal tele :test :data)
+      (is (= :error (deref error 100 :timeout))))))
+
+
+(deftest signal-await-test
+
+    (testing "Return a map"
+      (let [t (init!)]
+        (tune-in t :signal (fn [_] (do (signal t :signal-complete :complete) :response)))
+        (is (= {:prop {:received :response} :signal-complete :complete}
+               (signal-await
+                :timeout 100
+                (signal t :signal :data
+                        :propagate :prop)
+                (await :prop [p]
+                       {:received p})
+                (await :signal-complete [s]
+                       s)))))))
