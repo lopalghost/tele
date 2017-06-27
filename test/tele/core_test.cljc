@@ -52,7 +52,7 @@
 
   (testing "Handle errors"
     (let [error (promise)
-          tele (init! :err-fn (fn [_] (deliver error :error)))]
+          tele (init! :err-fn (fn [_ _] (deliver error :error)))]
       (tune-in tele :test (fn [_] (throw (ex-info "Error!" {}))))
       (signal tele :test :data)
       (is (= :error (deref error 100 :timeout))))))
@@ -78,7 +78,7 @@
 
   (testing "Handle errors"
     (let [error (promise)
-          tele (init! :err-fn (fn [_] (deliver error :error)))]
+          tele (init! :err-fn (fn [_ _] (deliver error :error)))]
       (tune-nonce tele :test (fn [_] (throw (ex-info "Error!" {}))))
       (signal tele :test :data)
       (is (= :error (deref error 100 :timeout))))))

@@ -12,7 +12,7 @@
         signal-pub (a/pub signal-chan :signal)]
     {:signal-chan signal-chan
      :signal-pub signal-pub
-     :err-fn (or err-fn identity)}))
+     :err-fn (or err-fn (constantly nil))}))
 
 
 (defn kill!
@@ -41,7 +41,7 @@
            (when propagate (signal t propagate res))
            res)
          (catch #?(:clj Throwable :cljs js/Object) e
-             ((:err-fn t) x)))))
+             ((:err-fn t) x e)))))
 
 
 (defn tune-in
